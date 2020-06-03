@@ -1,0 +1,5 @@
+1. Implement BufferService: The dqn policy learns from scratch, but could be supported to start the learning with episodes generated with the handcrafted policy.
+This requires generating e.g. 100 episodes with the HC policy, adding them to a buffer and handing the buffer over to the dqn_train function to start with.
+
+
+2. Next goal is to make the epsilon-greedy learning choose between greedy, epsilon and action from the HC policy.
