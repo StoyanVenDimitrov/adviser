@@ -183,7 +183,6 @@ class DQNPolicy(RLPolicy, Service):
                         the policy, and "sys_state" which contains additional informatino which might
                         be needed by the NLU to disambiguate challenging utterances.
         """
-
         self.num_dialogs = self.cumulative_train_dialogs % self.train_dialogs
         if self.cumulative_train_dialogs == 0 and self.target_model is not None:
             # start with same weights for target and online net when a new epoch begins
@@ -314,11 +313,13 @@ class DQNPolicy(RLPolicy, Service):
         loss = self.loss_fun(q_val, q_target)
         return loss
 
+    # TODO: train with subscribed buffer
+    #@PublishSubscribe(['buffer'])
+    #def train_batch(self, buffer):
     def train_batch(self):
         """ Train on a minibatch drawn from the experience buffer. """
         if not self.is_training:
             return
-
         if len(self.buffer) >= self.batch_size * 10 and \
                 self.total_train_dialogs % self.training_frequency == 0:
             self.train_call_count += 1
@@ -422,7 +423,7 @@ class DQNPolicy(RLPolicy, Service):
         if self.target_model is not None:
             self.target_model.train()
 
-    def eval(self, eval=True):
+    def     eval(self, eval=True):
         """ Sets module and its subgraph to eval mode """
         super(DQNPolicy, self).eval()
         self.is_training = False

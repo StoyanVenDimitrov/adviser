@@ -36,6 +36,7 @@ sys.path.append(get_root_dir())
 
 from services.policy.rl.experience_buffer import NaivePrioritizedBuffer, UniformBuffer
 
+from services.policy.rl.buffer_service import Buffer
 from services.bst import HandcraftedBST
 from services.simulator import HandcraftedUserSimulator
 from services.policy import DQNPolicy
@@ -66,7 +67,6 @@ def train(domain_name: str, log_to_file: bool, seed: int, train_epochs: int, tra
         buffer_cls = NaivePrioritizedBuffer
     elif buffer_classname == "uniform":
         buffer_cls = UniformBuffer
-
     domain = JSONLookupDomain(name=domain_name)
     
     bst = HandcraftedBST(domain=domain, logger=logger)
@@ -79,7 +79,11 @@ def train(domain_name: str, log_to_file: bool, seed: int, train_epochs: int, tra
                     logger=logger)
     evaluator = PolicyEvaluator(domain=domain, use_tensorboard=use_tensorboard,
                                 experiment_name=domain_name, logger=logger)
+    # TODO: add BufferService to the dialog system
+    buffer = Buffer(domain=domain, logger=logger)
+
     ds = DialogSystem(services=[user, bst, policy, evaluator], protocol='tcp')
+    # ds = DialogSystem(services=[user, bst, policy, evaluator, buffer], protocol='tcp')
     # ds.draw_system_graph()
 
     error_free = ds.is_error_free_messaging_pipeline()
