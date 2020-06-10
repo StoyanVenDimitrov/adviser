@@ -80,7 +80,7 @@ def train(domain_name: str, log_to_file: bool, seed: int, train_epochs: int, tra
     evaluator = PolicyEvaluator(domain=domain, use_tensorboard=use_tensorboard,
                                 experiment_name=domain_name, logger=logger)
     # TODO: add BufferService to the dialog system
-    buffer = Buffer(domain=domain, logger=logger)
+    #buffer = Buffer(domain=domain, logger=logger)
 
     ds = DialogSystem(services=[user, bst, policy, evaluator], protocol='tcp')
     # ds = DialogSystem(services=[user, bst, policy, evaluator, buffer], protocol='tcp')

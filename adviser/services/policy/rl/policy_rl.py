@@ -529,7 +529,6 @@ class RLPolicy(object):
         turn_reward = self.evaluator.get_turn_reward()
         # TODO: something similar must happen with HC policy too
         if self.is_training:
-            print(sys_act_idx)
             self.buffer.store(state_vector, sys_act_idx, turn_reward, terminal=False)
 
     def _expand_hello(self):
