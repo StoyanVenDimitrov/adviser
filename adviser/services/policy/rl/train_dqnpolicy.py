@@ -68,7 +68,7 @@ def train(domain_name: str, log_to_file: bool, seed: int, train_epochs: int, tra
     elif buffer_classname == "uniform":
         buffer_cls = UniformBuffer
     domain = JSONLookupDomain(name=domain_name)
-    buffer = Buffer(domain=domain, buffer_classname=buffer_cls)
+    #buffer = Buffer(domain=domain, buffer_classname=buffer_cls)
     bst = HandcraftedBST(domain=domain, logger=logger)
     user = HandcraftedUserSimulator(domain, logger=logger)
     # noise = SimpleNoise(domain=domain, train_error_rate=train_error_rate,
@@ -82,7 +82,6 @@ def train(domain_name: str, log_to_file: bool, seed: int, train_epochs: int, tra
     evaluator = PolicyEvaluator(domain=domain, use_tensorboard=use_tensorboard,
                                 experiment_name=domain_name, logger=logger)
     # TODO: add BufferService to the dialog system
-    #buffer = Buffer(domain=domain, logger=logger)
 
     ds = DialogSystem(services=[user, bst, policy, evaluator], protocol='tcp')
     #ds = DialogSystem(services=[user, bst, policy, evaluator, buffer], protocol='tcp')

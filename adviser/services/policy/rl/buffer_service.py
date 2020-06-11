@@ -40,13 +40,14 @@ class Buffer(Service):
 
     @PublishSubscribe(sub_topics=["beliefstate", "sys_act", "sys_state", "sim_goal"], pub_topics=["buffer"])
     def store(self, beliefstate, sys_act, sys_state, sim_goal):
+
+        print("Store:")
         """the store functionality of the experience buffer held out here"""
         # sys_state comes after update. Actually, the sys_state from a step earlier is needed:
         try:
             state_vector = self.beliefstate_dict_to_vector(beliefstate)
         # skipping start and end of dialog, as dqnpolicy do:
         except (TypeError, KeyError):
-            print('Passing trough')
             self.sys_state = sys_state
             return
 
@@ -59,13 +60,22 @@ class Buffer(Service):
         self.sys_state = sys_state
         return {'buffer': self.buffer}
 
-    # @PublishSubscribe(sub_topics=["sim_goal"], pub_topics=["buffer"])
-    # def dialog_end(self, sim_goal):
-    #     print(sim_goal)
-    #     final_reward, success = self.evaluator.get_final_reward(sim_goal=sim_goal)
-    #     self.buffer.store(None, None, final_reward, terminal=True)
-    #
-    #     return {'buffer': self.buffer}
+    @PublishSubscribe( pub_topics=["buffer"])
+    def dialog_end(self):
+        final_reward, success = self.evaluator.get_final_reward(sim_goal=self.sim_goal)
+        self.buffer.store(None, None, final_reward, terminal=True)
+
+        return {'buffer': self.buffer}
+
+    @PublishSubscribe(sub_topics=["sim_goal"])
+    def end(self, sim_goal):
+        """
+            Once the simulation ends, need to store the simulation goal for evaluation
+
+            Args:
+                sim_goal (Goal): the simulation goal, needed for evaluation
+        """
+        self.sim_goal = sim_goal
 
     def beliefstate_dict_to_vector(self, beliefstate: BeliefState) -> torch.FloatTensor:
         """ Converts the beliefstate dict to a torch tensor
