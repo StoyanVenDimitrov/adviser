@@ -94,14 +94,12 @@ class RLPolicy(object):
         self.buffer_size = buffer_size
         self.batch_size = batch_size
         self.discount_gamma = discount_gamma
-
         self.writer = None
 
         # get state size
         self.state_dim = self.beliefstate_dict_to_vector(
             BeliefState(domain)._init_beliefstate()).size(1)
         self.logger.info("state space dim: " + str(self.state_dim))
-
         # get system action list
         self.actions = ["inform_byname",  # TODO rename to 'bykey'
                         "inform_alternatives",
@@ -525,10 +523,10 @@ class RLPolicy(object):
         if self.logger:
             self.logger.dialog_turn("system action > " + str(self.last_sys_act))
         self._update_system_belief(beliefstate, self.last_sys_act)
-
         turn_reward = self.evaluator.get_turn_reward()
-        # TODO: something similar must happen with HC policy too
         if self.is_training:
+            # print('State vector to store',state_vector)
+            # print('Action to store',sys_act_idx)
             self.buffer.store(state_vector, sys_act_idx, turn_reward, terminal=False)
 
     def _expand_hello(self):

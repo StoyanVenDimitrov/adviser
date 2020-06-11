@@ -39,7 +39,7 @@ from services.policy.rl.experience_buffer import NaivePrioritizedBuffer, Uniform
 from services.policy.rl.buffer_service import Buffer
 from services.bst import HandcraftedBST
 from services.simulator import HandcraftedUserSimulator
-from services.policy import DQNPolicy
+from services.policy import DQNPolicy, HandcraftedPolicy
 from services.stats.evaluation import PolicyEvaluator
 from utils.domain.jsonlookupdomain import JSONLookupDomain
 from utils import DiasysLogger, LogLevel
@@ -68,7 +68,7 @@ def train(domain_name: str, log_to_file: bool, seed: int, train_epochs: int, tra
     elif buffer_classname == "uniform":
         buffer_cls = UniformBuffer
     domain = JSONLookupDomain(name=domain_name)
-    
+    buffer = Buffer(domain=domain, buffer_classname=buffer_cls)
     bst = HandcraftedBST(domain=domain, logger=logger)
     user = HandcraftedUserSimulator(domain, logger=logger)
     # noise = SimpleNoise(domain=domain, train_error_rate=train_error_rate,
@@ -77,13 +77,15 @@ def train(domain_name: str, log_to_file: bool, seed: int, train_epochs: int, tra
                     gradient_clipping=grad_clipping, buffer_cls=buffer_cls,
                     replay_buffer_size=buffer_size, train_dialogs=train_dialogs,
                     logger=logger)
+    #policy = HandcraftedPolicy(domain=domain, logger=logger)
+
     evaluator = PolicyEvaluator(domain=domain, use_tensorboard=use_tensorboard,
                                 experiment_name=domain_name, logger=logger)
     # TODO: add BufferService to the dialog system
     #buffer = Buffer(domain=domain, logger=logger)
 
     ds = DialogSystem(services=[user, bst, policy, evaluator], protocol='tcp')
-    # ds = DialogSystem(services=[user, bst, policy, evaluator, buffer], protocol='tcp')
+    #ds = DialogSystem(services=[user, bst, policy, evaluator, buffer], protocol='tcp')
     # ds.draw_system_graph()
 
     error_free = ds.is_error_free_messaging_pipeline()
