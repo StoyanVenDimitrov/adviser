@@ -104,6 +104,10 @@ class RLPolicy(object):
         self.actions = ["inform_byname",  # TODO rename to 'bykey'
                         "inform_alternatives",
                         "reqmore"]
+        self.atomic_actions = ["inform_byname",  # TODO rename to 'bykey'
+                               "inform_alternatives",
+                               "reqmore",
+                               'closingmsg']
         # TODO badaction
         for req_slot in self.domain.get_system_requestable_slots():
             self.actions.append('request#' + req_slot)
@@ -525,8 +529,9 @@ class RLPolicy(object):
         self._update_system_belief(beliefstate, self.last_sys_act)
         turn_reward = self.evaluator.get_turn_reward()
         if self.is_training:
-            # print('State vector to store',state_vector)
-            # print('Action to store',sys_act_idx)
+            # print('Action to store:',self.last_sys_act)
+            # print('Action to id',sys_act_idx)
+            # print('######')
             self.buffer.store(state_vector, sys_act_idx, turn_reward, terminal=False)
 
     def _expand_hello(self):
