@@ -217,8 +217,6 @@ class DQNPolicy(RLPolicy, Service):
         if next_action_idx == -1:
             # dialog continues
             next_action_idx = self.select_action_eps_greedy(state_vector)
-        # print('--------->',(state_vector != 0).nonzero())
-        # print('--->',((state_vector != 0).nonzero()).shape)
         self.turn_end(beliefstate, state_vector, next_action_idx)
 
         # Update the sys_state
