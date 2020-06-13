@@ -30,6 +30,11 @@ class Buffer(Service, RLPolicy):
             logger=logger, max_turns=25, device=device)
         self.is_training = True
 
+        self.atomic_actions = ["inform_byname",  # TODO rename to 'bykey'
+                               "inform_alternatives",
+                               "reqmore",
+                               'closingmsg']
+
     def dialog_start(self, dialog_start=False):
         self.sys_state = {
             "lastInformedPrimKeyVal": None,

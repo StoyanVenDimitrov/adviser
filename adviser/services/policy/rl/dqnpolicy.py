@@ -217,6 +217,7 @@ class DQNPolicy(RLPolicy, Service):
         if next_action_idx == -1:
             # dialog continues
             next_action_idx = self.select_action_eps_greedy(state_vector)
+
         self.turn_end(beliefstate, state_vector, next_action_idx)
 
         # Update the sys_state
@@ -317,6 +318,7 @@ class DQNPolicy(RLPolicy, Service):
         """ Train on a minibatch drawn from the experience buffer. """
         if not self.is_training:
             return
+
         if len(self.buffer) >= self.batch_size * 10 and \
                 self.total_train_dialogs % self.training_frequency == 0:
             self.train_call_count += 1
