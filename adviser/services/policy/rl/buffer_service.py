@@ -17,6 +17,7 @@ class Buffer(Service, RLPolicy):
             buffer_classname,
             batch_size=64,
             buffer_size=6000,
+            training_frequency=2,
             logger: DiasysLogger = DiasysLogger(),
             device=torch.device('cpu')
     ):
@@ -29,7 +30,8 @@ class Buffer(Service, RLPolicy):
             discount_gamma=None, include_confreq=None,
             logger=logger, max_turns=25, device=device)
         self.is_training = True
-
+        self.total_train_dialogs = 0
+        self.training_frequency = training_frequency
         self.atomic_actions = ["inform_byname",  # TODO rename to 'bykey'
                                "inform_alternatives",
                                "reqmore",
@@ -55,14 +57,23 @@ class Buffer(Service, RLPolicy):
         state_vector = self.beliefstate_dict_to_vector(beliefstate)
         self.turn_end(beliefstate, state_vector, action_id)
 
-    @PublishSubscribe( pub_topics=["buffer"])
+    @PublishSubscribe( pub_topics=["training_batch"])
     def dialog_end(self):
         self.end_dialog(self.sim_goal)
-        return {'buffer': self.buffer}
+        self.total_train_dialogs += 1
+        if len(self.buffer) >= self.batch_size * 10 and \
+                self.total_train_dialogs % self.training_frequency == 0:
+            return {'training_batch': self.buffer.sample()}
 
     @PublishSubscribe(sub_topics=["sim_goal"])
     def end(self, sim_goal):
         self.sim_goal = sim_goal
+
+    @PublishSubscribe(sub_topics=["buffer_update"])
+    def update(self, buffer_update):
+        """Carries out a buffer update"""
+        for elem in buffer_update:
+            self.buffer.update(elem(0), elem(1))
 
     def make_action_id_from_action(self, action):
         slot_values = action.slot_values

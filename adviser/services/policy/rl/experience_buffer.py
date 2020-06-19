@@ -17,7 +17,6 @@
 #
 ###############################################################################
 
-
 import numpy as np
 import torch
 
@@ -248,6 +247,8 @@ class NaivePrioritizedBuffer(Buffer):
         if super(NaivePrioritizedBuffer, self).store(state, action, reward, terminal=terminal):
             # create new tree node only if something new was added to the buffers
             self.probs[self.last_write_pos] = self._priority_to_probability(self.max_p)
+
+
 
     def update(self, idx: int, error: float):
         """ Update the priority of transition with index idx """

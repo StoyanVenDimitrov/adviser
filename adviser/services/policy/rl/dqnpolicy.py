@@ -167,7 +167,7 @@ class DQNPolicy(RLPolicy, Service):
         self.end_dialog(self.sim_goal)
         if self.is_training:
             self.total_train_dialogs += 1
-        self.train_batch()
+        # self.train_batch()
 
     @PublishSubscribe(sub_topics=["beliefstate"], pub_topics=["sys_act", "sys_state"])
     def choose_sys_act(self, beliefstate: BeliefState = None) -> dict(sys_act=SysAct):
@@ -314,65 +314,81 @@ class DQNPolicy(RLPolicy, Service):
         loss = self.loss_fun(q_val, q_target)
         return loss
 
-    def train_batch(self):
+    @PublishSubscribe(sub_topics=['training_batch'])
+    def train_batch(self, training_batch):
         """ Train on a minibatch drawn from the experience buffer. """
         if not self.is_training:
             return
+        # if len(self.buffer) >= self.batch_size * 10 and \
+        #         self.total_train_dialogs % self.training_frequency == 0:
 
-        if len(self.buffer) >= self.batch_size * 10 and \
-                self.total_train_dialogs % self.training_frequency == 0:
-            self.train_call_count += 1
+        self.train_call_count += 1
 
-            s_batch, a_batch, r_batch, s2_batch, t_batch, indices, importance_weights = \
-                self.buffer.sample()
+        # s_batch, a_batch, r_batch, s2_batch, t_batch, indices, importance_weights = \
+        #     self.buffer.sample()
+        s_batch = training_batch[0]
+        a_batch = training_batch[1]
+        r_batch = training_batch[2]
+        s2_batch = training_batch[3]
+        t_batch = training_batch[4]
+        indices = training_batch[5]
+        importance_weights = training_batch[6]
+        self.optim.zero_grad()
+        torch.autograd.set_grad_enabled(True)
+        s_batch.requires_grad_()
+        gamma = torch.tensor([self.discount_gamma] * self.batch_size, dtype=torch.float,
+                             device=self.device).view(self.batch_size, 1)
 
-            self.optim.zero_grad()
-            torch.autograd.set_grad_enabled(True)
-            s_batch.requires_grad_()
-            gamma = torch.tensor([self.discount_gamma] * self.batch_size, dtype=torch.float,
-                                 device=self.device).view(self.batch_size, 1)
+        # calculate loss
+        loss = self.loss(s_batch, a_batch, s2_batch, r_batch, t_batch, gamma)
+        if importance_weights is not None:
+            loss = loss * importance_weights
+            buffer_losses = []
+            for i in range(self.batch_size):
+                # importance weighting
+                # update priorities
+                buffer_losses.append((i, loss[i].item()))
+                # self.buffer.update(i, loss[i].item())
+            print('done')
+            self.buffer_update(buffer_losses)
+        loss = loss.mean()
+        loss.backward()
 
-            # calculate loss
-            loss = self.loss(s_batch, a_batch, s2_batch, r_batch, t_batch, gamma)
-            if importance_weights is not None:
-                loss = loss * importance_weights
-                for i in range(self.batch_size):
-                    # importance weighting
-                    # update priorities
-                    self.buffer.update(i, loss[i].item())
-            loss = loss.mean()
-            loss.backward()
+        # clip gradients
+        if self.gradient_clipping > 0.0:
+            nn.utils.clip_grad_norm_(self.model.parameters(), self.gradient_clipping)
 
-            # clip gradients
-            if self.gradient_clipping > 0.0:
-                nn.utils.clip_grad_norm_(self.model.parameters(), self.gradient_clipping)
+        # update weights
+        self.optim.step()
+        current_loss = loss.item()
+        torch.autograd.set_grad_enabled(False)
 
-            # update weights
-            self.optim.step()
-            current_loss = loss.item()
-            torch.autograd.set_grad_enabled(False)
+        if self.writer is not None:
+            # plot loss
+            self.writer.add_scalar('train/loss', current_loss, self.train_call_count)
+            # plot min/max gradients
+            max_grad_norm = -1.0
+            min_grad_norm = 1000000.0
+            for param in self.model.parameters():
+                if param.grad is not None:
+                    # TODO decide on norm
+                    current_grad_norm = torch.norm(param.grad, 2)
+                    if current_grad_norm > max_grad_norm:
+                        max_grad_norm = current_grad_norm
+                    if current_grad_norm < min_grad_norm:
+                        min_grad_norm = current_grad_norm
+            self.writer.add_scalar('train/min_grad', min_grad_norm, self.train_call_count)
+            self.writer.add_scalar('train/max_grad', max_grad_norm, self.train_call_count)
 
-            if self.writer is not None:
-                # plot loss
-                self.writer.add_scalar('train/loss', current_loss, self.train_call_count)
-                # plot min/max gradients
-                max_grad_norm = -1.0
-                min_grad_norm = 1000000.0
-                for param in self.model.parameters():
-                    if param.grad is not None:
-                        # TODO decide on norm
-                        current_grad_norm = torch.norm(param.grad, 2)
-                        if current_grad_norm > max_grad_norm:
-                            max_grad_norm = current_grad_norm
-                        if current_grad_norm < min_grad_norm:
-                            min_grad_norm = current_grad_norm
-                self.writer.add_scalar('train/min_grad', min_grad_norm, self.train_call_count)
-                self.writer.add_scalar('train/max_grad', max_grad_norm, self.train_call_count)
+        # update target net
+        if self.target_model is not None and \
+                self.train_call_count % self.target_update_rate == 0:
+            self.target_model.load_state_dict(self.model.state_dict())
 
-            # update target net
-            if self.target_model is not None and \
-                    self.train_call_count % self.target_update_rate == 0:
-                self.target_model.load_state_dict(self.model.state_dict())
+    @PublishSubscribe(pub_topics=["buffer_update"])
+    def buffer_update(self, updates_list):
+        """send buffer updates to BufferService"""
+        return {"buffer_update": updates_list}
 
     def eps_scheduler(self):
         """ Linear epsilon decay """

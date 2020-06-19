@@ -547,7 +547,6 @@ class RLPolicy(object):
             # real user interaction, no simulator - don't have to evaluate
             # anything, just reset counters
             return
-
         final_reward, success = self.evaluator.get_final_reward(sim_goal, logging=False)
 
         if self.is_training:
