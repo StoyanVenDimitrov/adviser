@@ -73,22 +73,22 @@ def train(domain_name: str, log_to_file: bool, seed: int, train_epochs: int, tra
     user = HandcraftedUserSimulator(domain, logger=logger)
     # noise = SimpleNoise(domain=domain, train_error_rate=train_error_rate,
     #                     test_error_rate=test_error_rate, logger=logger)
-    # policy = DQNPolicy(domain=domain, lr=lr, eps_start=eps_start,
-    #                 gradient_clipping=grad_clipping, buffer_cls=buffer_cls,
-    #                 replay_buffer_size=buffer_size, train_dialogs=train_dialogs,
-    #                 logger=logger)
-    policy = HandcraftedPolicy(domain=domain, logger=logger)
+    policy = DQNPolicy(domain=domain, lr=lr, eps_start=eps_start,
+                    gradient_clipping=grad_clipping, buffer_cls=buffer_cls,
+                    replay_buffer_size=buffer_size, train_dialogs=train_dialogs,
+                    logger=logger)
+    # policy = HandcraftedPolicy(domain=domain, logger=logger)
 
     evaluator = PolicyEvaluator(domain=domain, use_tensorboard=use_tensorboard,
                                 experiment_name=domain_name, logger=logger)
 
     #ds = DialogSystem(services=[user, bst, policy, evaluator], protocol='tcp')
     ds = DialogSystem(services=[user, bst, policy, evaluator, buffer], protocol='tcp')
-    # ds.draw_system_graph()
+    ds.draw_system_graph()
 
     error_free = ds.is_error_free_messaging_pipeline()
     if not error_free:
-        ds.print_local_inconsistencies()
+        ds.print_inconsistencies()
 
     for j in range(train_epochs):
         # START TRAIN EPOCH

@@ -69,9 +69,10 @@ class Buffer(Service, RLPolicy):
     def end(self, sim_goal):
         self.sim_goal = sim_goal
 
-    @PublishSubscribe(sub_topics=["buffer_update"])
-    def update(self, buffer_update):
+    @PublishSubscribe(sub_topics=["buffer_update", "sys_act"])
+    def update(self, buffer_update, sys_act):
         """Carries out a buffer update"""
+        print(buffer_update)
         for elem in buffer_update:
             self.buffer.update(elem(0), elem(1))
 
