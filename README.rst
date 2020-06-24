@@ -1,3 +1,10 @@
+|release| |nbsp| |license|
+
+.. |release| image:: https://img.shields.io/github/v/release/digitalphonetics/adviser?sort=semver
+.. |license| image:: https://img.shields.io/github/license/digitalphonetics/adviser
+.. |nbsp| unicode:: 0xA0
+   :trim:
+
 Documentation
 =============
 
@@ -9,6 +16,8 @@ Adviser 2.0 is released!
 
 Installation
 ============
+
+Note: Adviser 2.0 is currently only tested on Linux and Mac.
 
 Downloading the code
 --------------------
