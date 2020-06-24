@@ -48,7 +48,7 @@ class DQNPolicy(RLPolicy, Service):
                  advantage_layer_sizes: List[int] = [400, 400],  # dueling architecture
                  lr: float = 0.0001, discount_gamma: float = 0.99,
                  target_update_rate: int = 3,
-                 replay_buffer_size: int = 8192, batch_size: int = 64,
+                 replay_buffer_size: int = 6000, batch_size: int = 64,
                  buffer_cls: Type[Buffer] = NaivePrioritizedBuffer,
                  eps_start: float = 0.3, eps_end: float = 0.0,
                  l2_regularisation: float = 0.0, gradient_clipping: float = 5.0,
@@ -167,9 +167,9 @@ class DQNPolicy(RLPolicy, Service):
         self.end_dialog(self.sim_goal)
         if self.is_training:
             self.total_train_dialogs += 1
-        # self.train_batch()
+            #self.train_batch()
 
-    @PublishSubscribe(sub_topics=["beliefstate"], pub_topics=["sys_act", "sys_state"])
+    @PublishSubscribe(sub_topics=["beliefstate"], pub_topics=["sys_act", "sys_state"])#, 'next_id'])
     def choose_sys_act(self, beliefstate: BeliefState = None) -> dict(sys_act=SysAct):
         """
             Determine the next system act based on the given beliefstate
@@ -217,7 +217,6 @@ class DQNPolicy(RLPolicy, Service):
         if next_action_idx == -1:
             # dialog continues
             next_action_idx = self.select_action_eps_greedy(state_vector)
-
         self.turn_end(beliefstate, state_vector, next_action_idx)
 
         # Update the sys_state
@@ -231,7 +230,7 @@ class DQNPolicy(RLPolicy, Service):
                 self.sys_state['lastRequestSlot'] = list(self.last_sys_act.slot_values.keys())[0]
 
         self.sys_state["last_act"] = self.last_sys_act
-        return {'sys_act': self.last_sys_act, "sys_state": self.sys_state}
+        return {'sys_act': self.last_sys_act, "sys_state": self.sys_state}#, 'next_id': next_action_idx}
 
     def _forward(self, state: torch.FloatTensor, action: torch.LongTensor):
         """ Forward state through DQN, return only Q-values for given actions.
@@ -317,15 +316,11 @@ class DQNPolicy(RLPolicy, Service):
     @PublishSubscribe(sub_topics=['training_batch'])
     def train_batch(self, training_batch):
         """ Train on a minibatch drawn from the experience buffer. """
+        print('training a batch')
         if not self.is_training:
             return
-        # if len(self.buffer) >= self.batch_size * 10 and \
-        #         self.total_train_dialogs % self.training_frequency == 0:
-
         self.train_call_count += 1
 
-        # s_batch, a_batch, r_batch, s2_batch, t_batch, indices, importance_weights = \
-        #     self.buffer.sample()
         s_batch = training_batch[0]
         a_batch = training_batch[1]
         r_batch = training_batch[2]
@@ -348,8 +343,7 @@ class DQNPolicy(RLPolicy, Service):
                 # importance weighting
                 # update priorities
                 buffer_losses.append((i, loss[i].item()))
-                # self.buffer.update(i, loss[i].item())
-            print('done')
+            print('requesting update...')
             self.buffer_update(buffer_losses)
         loss = loss.mean()
         loss.backward()

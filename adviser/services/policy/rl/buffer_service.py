@@ -36,18 +36,25 @@ class Buffer(Service, RLPolicy):
                                "inform_alternatives",
                                "reqmore",
                                'closingmsg']
+        self.turns = 0
 
     def dialog_start(self, dialog_start=False):
+        print(len(self.buffer))
         self.sys_state = {
             "lastInformedPrimKeyVal": None,
             "lastActionInformNone": False,
             "offerHappened": False,
             'informedPrimKeyValsSinceNone': []}
+        self.turns = 0
 
-    @PublishSubscribe(sub_topics=["beliefstate", "sys_act"])
-    def store(self, beliefstate, sys_act):
+
+    @PublishSubscribe(sub_topics=["beliefstate", "sys_act"])#, 'next_id'])
+    def store(self, beliefstate, sys_act):#, next_id):
+        self.turns += 1
         """the store functionality of the experience buffer held out here"""
-        if sys_act == self.hello_action() or sys_act == self.bye_action():
+        if sys_act == self.hello_action(): # or sys_act == self.bye_action():
+            return
+        if self.turns > self.max_turns:
             return
         try:
             action_id = self.make_action_id_from_action(sys_act)
@@ -72,9 +79,11 @@ class Buffer(Service, RLPolicy):
     @PublishSubscribe(sub_topics=["buffer_update", "sys_act"])
     def update(self, buffer_update, sys_act):
         """Carries out a buffer update"""
-        print(buffer_update)
+        print('updating')
         for elem in buffer_update:
-            self.buffer.update(elem(0), elem(1))
+            # self.buffer.update(elem(0), elem(1)) leads to python error,
+            # but it wasn't reported, only the results were very bad
+            self.buffer.update(elem[0], elem[1])
 
     def make_action_id_from_action(self, action):
         slot_values = action.slot_values

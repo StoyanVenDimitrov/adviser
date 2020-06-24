@@ -243,7 +243,6 @@ class NaivePrioritizedBuffer(Buffer):
             reward: this turn's reward (float)
             terminal: indicates whether episode finished (boolean)
         """
-
         if super(NaivePrioritizedBuffer, self).store(state, action, reward, terminal=terminal):
             # create new tree node only if something new was added to the buffers
             self.probs[self.last_write_pos] = self._priority_to_probability(self.max_p)
@@ -269,7 +268,6 @@ class NaivePrioritizedBuffer(Buffer):
         data_indices = torch.empty(self.batch_size, dtype=torch.long, device=self.device)
         probabilities = torch.empty(self.batch_size, dtype=torch.float, device=self.device)
         indices = []
-
         self.sample_last_transition = True
         p_normed = np.array(self.probs[:self.buffer_count]) / np.linalg.norm(
             self.probs[:self.buffer_count], ord=1)

@@ -81,10 +81,11 @@ def train(domain_name: str, log_to_file: bool, seed: int, train_epochs: int, tra
                     replay_buffer_size=buffer_size, train_dialogs=train_dialogs,
 
                     logger=logger, summary_writer=summary_writer)
+    hc_policy = HandcraftedPolicy(domain=domain, logger=logger)
     evaluator = PolicyEvaluator(domain=domain, use_tensorboard=use_tensorboard,
                                 experiment_name=domain_name, logger=logger,
                                 summary_writer=summary_writer)
-    ds = DialogSystem(services=[user, bst, policy, evaluator], protocol='tcp')
+    ds = DialogSystem(services=[user, bst, policy, evaluator, buffer], protocol='tcp')
     # ds.draw_system_graph()
 
     error_free = ds.is_error_free_messaging_pipeline()
@@ -154,7 +155,7 @@ if __name__ == "__main__":
 
     parser.add_argument("-bn", "--buffername", choices=['uniform', 'prioritized'],
                         help="experience replay buffer type", default='prioritized')
-    parser.add_argument("-bs", "--buffersize", type=int, default=8192,
+    parser.add_argument("-bs", "--buffersize", type=int, default=6000,
                         help="capacity of experience replay buffer")
     args = parser.parse_args()
     assert 0 <= args.epsilon <= 1, "exploration rate has to be between 0 and 1"

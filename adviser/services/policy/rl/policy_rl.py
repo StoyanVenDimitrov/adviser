@@ -527,7 +527,6 @@ class RLPolicy(object):
         self._update_system_belief(beliefstate, self.last_sys_act)
 
         turn_reward = self.evaluator.get_turn_reward()
-
         if self.is_training:
             self.buffer.store(state_vector, sys_act_idx, turn_reward, terminal=False)
 
@@ -552,6 +551,6 @@ class RLPolicy(object):
         if self.is_training:
             self.buffer.store(None, None, final_reward, terminal=True)
 
-        # if self.writer is not None:
-        #     self.writer.add_scalar('buffer/items', len(self.buffer),
-        #                     self.train + self.total_train_dialogs)
+        if self.writer is not None:
+            self.writer.add_scalar('buffer/items', len(self.buffer),
+                            self.train + self.total_train_dialogs)
