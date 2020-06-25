@@ -169,8 +169,8 @@ class DQNPolicy(RLPolicy, Service):
             self.total_train_dialogs += 1
             #self.train_batch()
 
-    @PublishSubscribe(sub_topics=["beliefstate"], pub_topics=["sys_act", "sys_state"])#, 'next_id'])
-    def choose_sys_act(self, beliefstate: BeliefState = None) -> dict(sys_act=SysAct):
+    @PublishSubscribe(sub_topics=["beliefstate_rl"], pub_topics=["sys_act", "sys_state"])#, 'next_id'])
+    def choose_sys_act(self, beliefstate_rl) -> dict(sys_act=SysAct):
         """
             Determine the next system act based on the given beliefstate
 
@@ -207,17 +207,17 @@ class DQNPolicy(RLPolicy, Service):
             return {'sys_act': bye_action, "sys_state": sys_state}
 
         # intermediate or closing turn
-        state_vector = self.beliefstate_dict_to_vector(beliefstate)
+        state_vector = self.beliefstate_dict_to_vector(beliefstate_rl)
         next_action_idx = -1
 
         # check if user ended dialog
-        if UserActionType.Bye in beliefstate["user_acts"]:
+        if UserActionType.Bye in beliefstate_rl["user_acts"]:
             # user terminated current dialog -> say bye
             next_action_idx = self.action_idx(SysActionType.Bye.value)
         if next_action_idx == -1:
             # dialog continues
             next_action_idx = self.select_action_eps_greedy(state_vector)
-        self.turn_end(beliefstate, state_vector, next_action_idx)
+        self.turn_end(beliefstate_rl, state_vector, next_action_idx)
 
         # Update the sys_state
         if self.last_sys_act.type in [SysActionType.InformByName, SysActionType.InformByAlternatives]:

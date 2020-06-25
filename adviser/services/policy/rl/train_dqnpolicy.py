@@ -40,6 +40,7 @@ from services.policy.rl.buffer_service import Buffer
 from services.bst import HandcraftedBST
 from services.simulator import HandcraftedUserSimulator
 from services.policy import DQNPolicy, HandcraftedPolicy
+from services.policy.rl.scheduler_service import Scheduler
 from services.stats.evaluation import PolicyEvaluator
 from utils.domain.jsonlookupdomain import JSONLookupDomain
 from utils import DiasysLogger, LogLevel
@@ -74,6 +75,7 @@ def train(domain_name: str, log_to_file: bool, seed: int, train_epochs: int, tra
     buffer = Buffer(domain=domain, buffer_classname=buffer_cls)
     bst = HandcraftedBST(domain=domain, logger=logger)
     user = HandcraftedUserSimulator(domain, logger=logger)
+    scheduler = Scheduler(domain, 200)
     # noise = SimpleNoise(domain=domain, train_error_rate=train_error_rate,
     #                     test_error_rate=test_error_rate, logger=logger)
     policy = DQNPolicy(domain=domain, lr=lr, eps_start=eps_start,
@@ -85,8 +87,8 @@ def train(domain_name: str, log_to_file: bool, seed: int, train_epochs: int, tra
     evaluator = PolicyEvaluator(domain=domain, use_tensorboard=use_tensorboard,
                                 experiment_name=domain_name, logger=logger,
                                 summary_writer=summary_writer)
-    ds = DialogSystem(services=[user, bst, policy, evaluator, buffer], protocol='tcp')
-    # ds.draw_system_graph()
+    ds = DialogSystem(services=[user, bst, policy, evaluator, buffer, hc_policy, scheduler], protocol='tcp')
+    ds.draw_system_graph()
 
     error_free = ds.is_error_free_messaging_pipeline()
     if not error_free:

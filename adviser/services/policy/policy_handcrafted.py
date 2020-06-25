@@ -74,8 +74,8 @@ class HandcraftedPolicy(Service):
         self.current_suggestions = []  # list of current suggestions
         self.s_index = 0  # the index in current suggestions for the current system reccomendation
 
-    @PublishSubscribe(sub_topics=["beliefstate"], pub_topics=["sys_act", "sys_state"])
-    def choose_sys_act(self, beliefstate: BeliefState = None) \
+    @PublishSubscribe(sub_topics=["beliefstate_hcp"], pub_topics=["sys_act", "sys_state"])
+    def choose_sys_act(self, beliefstate_hcp) \
             -> dict(sys_act=SysAct):
 
         """
@@ -96,7 +96,7 @@ class HandcraftedPolicy(Service):
         self.turns += 1
         # do nothing on the first turn --LV
         sys_state = {}
-        if self.first_turn and not beliefstate['user_acts']:
+        if self.first_turn and not beliefstate_hcp['user_acts']:
             self.first_turn = False
             sys_act = SysAct()
             sys_act.type = SysActionType.Welcome
@@ -110,33 +110,33 @@ class HandcraftedPolicy(Service):
             return {'sys_act': sys_act, "sys_state": sys_state}
 
         # removes hello and thanks if there are also domain specific actions
-        self._remove_gen_actions(beliefstate)
+        self._remove_gen_actions(beliefstate_hcp)
 
-        if UserActionType.Bad in beliefstate["user_acts"]:
+        if UserActionType.Bad in beliefstate_hcp["user_acts"]:
             sys_act = SysAct()
             sys_act.type = SysActionType.Bad
         # if the action is 'bye' tell system to end dialog
-        elif UserActionType.Bye in beliefstate["user_acts"]:
+        elif UserActionType.Bye in beliefstate_hcp["user_acts"]:
             sys_act = SysAct()
             sys_act.type = SysActionType.Bye
         # if user only says thanks, ask if they want anything else
-        elif UserActionType.Thanks in beliefstate["user_acts"]:
+        elif UserActionType.Thanks in beliefstate_hcp["user_acts"]:
             sys_act = SysAct()
             sys_act.type = SysActionType.RequestMore
         # If user only says hello, request a random slot to move dialog along
-        elif UserActionType.Hello in beliefstate["user_acts"] or UserActionType.SelectDomain in beliefstate["user_acts"]:
+        elif UserActionType.Hello in beliefstate_hcp["user_acts"] or UserActionType.SelectDomain in beliefstate_hcp["user_acts"]:
             sys_act = SysAct()
             sys_act.type = SysActionType.Request
-            slot = self._get_open_slot(beliefstate)
+            slot = self._get_open_slot(beliefstate_hcp)
             sys_act.add_value(slot)
 
             # If we switch to the domain, start a new dialog
-            if UserActionType.SelectDomain in beliefstate["user_acts"]:
+            if UserActionType.SelectDomain in beliefstate_hcp["user_acts"]:
                 self.dialog_start()
             self.first_turn = False
         # handle domain specific actions
         else:
-            sys_act, sys_state = self._next_action(beliefstate)
+            sys_act, sys_state = self._next_action(beliefstate_hcp)
         if self.logger:
             self.logger.dialog_turn("System Action: " + str(sys_act))
         if "last_act" not in sys_state:
