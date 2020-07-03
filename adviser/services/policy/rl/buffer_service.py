@@ -39,7 +39,6 @@ class Buffer(Service, RLPolicy):
         self.turns = 0
 
     def dialog_start(self, dialog_start=False):
-        print(len(self.buffer))
         self.sys_state = {
             "lastInformedPrimKeyVal": None,
             "lastActionInformNone": False,
@@ -64,20 +63,25 @@ class Buffer(Service, RLPolicy):
         state_vector = self.beliefstate_dict_to_vector(beliefstate)
         self.turn_end(beliefstate, state_vector, action_id)
 
-    @PublishSubscribe( pub_topics=["training_batch"])
+    @PublishSubscribe(pub_topics=["training_batch"])
     def dialog_end(self):
         self.end_dialog(self.sim_goal)
         self.total_train_dialogs += 1
+        if self.writer is not None:
+            self.writer.add_scalar('buffer/items', len(self.buffer),
+                            self.total_train_dialogs)
         if len(self.buffer) >= self.batch_size * 10 and \
                 self.total_train_dialogs % self.training_frequency == 0:
+            print('publishing ')
             return {'training_batch': self.buffer.sample()}
+
 
     @PublishSubscribe(sub_topics=["sim_goal"])
     def end(self, sim_goal):
         self.sim_goal = sim_goal
 
-    @PublishSubscribe(sub_topics=["buffer_update", "sys_act"])
-    def update(self, buffer_update, sys_act):
+    @PublishSubscribe(sub_topics=["buffer_update"])
+    def update(self, buffer_update):
         """Carries out a buffer update"""
         print('updating')
         for elem in buffer_update:
@@ -105,4 +109,3 @@ class Buffer(Service, RLPolicy):
         sys_act = SysAct()
         sys_act.type = SysActionType.Bye
         return sys_act
-

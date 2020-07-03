@@ -551,6 +551,6 @@ class RLPolicy(object):
         if self.is_training:
             self.buffer.store(None, None, final_reward, terminal=True)
 
-        if self.writer is not None:
-            self.writer.add_scalar('buffer/items', len(self.buffer),
-                            self.train + self.total_train_dialogs)
+        # if self.writer is not None:
+        #     self.writer.add_scalar('buffer/items', len(self.buffer),
+        #                     self.total_train_dialogs)

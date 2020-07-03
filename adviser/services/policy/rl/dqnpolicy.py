@@ -317,7 +317,7 @@ class DQNPolicy(RLPolicy, Service):
     def train_batch(self, training_batch):
         """ Train on a minibatch drawn from the experience buffer. """
         print('training a batch')
-        if not self.is_training:
+        if not self.is_training or training_batch is None:
             return
         self.train_call_count += 1
 

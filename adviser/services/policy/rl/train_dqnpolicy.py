@@ -65,7 +65,7 @@ def train(domain_name: str, log_to_file: bool, seed: int, train_epochs: int, tra
     file_log_lvl = LogLevel.DIALOGS if log_to_file else LogLevel.NONE
     logger = DiasysLogger(console_log_lvl=LogLevel.RESULTS, file_log_lvl=file_log_lvl)
 
-    summary_writer = SummaryWriter(log_dir='logs') if use_tensorboard else None
+    summary_writer = SummaryWriter(log_dir='buffer_logs/run2') if use_tensorboard else None
     
     if buffer_classname == "prioritized":
         buffer_cls = NaivePrioritizedBuffer
@@ -75,7 +75,7 @@ def train(domain_name: str, log_to_file: bool, seed: int, train_epochs: int, tra
     buffer = Buffer(domain=domain, buffer_classname=buffer_cls)
     bst = HandcraftedBST(domain=domain, logger=logger)
     user = HandcraftedUserSimulator(domain, logger=logger)
-    scheduler = Scheduler(domain, 200)
+    scheduler = Scheduler(domain, 100)
     # noise = SimpleNoise(domain=domain, train_error_rate=train_error_rate,
     #                     test_error_rate=test_error_rate, logger=logger)
     policy = DQNPolicy(domain=domain, lr=lr, eps_start=eps_start,
