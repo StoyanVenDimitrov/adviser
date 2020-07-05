@@ -316,11 +316,10 @@ class DQNPolicy(RLPolicy, Service):
     @PublishSubscribe(sub_topics=['training_batch'])
     def train_batch(self, training_batch):
         """ Train on a minibatch drawn from the experience buffer. """
-        print('training a batch')
         if not self.is_training or training_batch is None:
-            return
+            return # {"batch_train_end": True}
+        print('>>>', training_batch[1].size())
         self.train_call_count += 1
-
         s_batch = training_batch[0]
         a_batch = training_batch[1]
         r_batch = training_batch[2]
@@ -343,7 +342,7 @@ class DQNPolicy(RLPolicy, Service):
                 # importance weighting
                 # update priorities
                 buffer_losses.append((i, loss[i].item()))
-            print('requesting update...')
+            # print('requesting update...')
             self.buffer_update(buffer_losses)
         loss = loss.mean()
         loss.backward()

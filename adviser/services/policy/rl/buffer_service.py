@@ -37,6 +37,7 @@ class Buffer(Service, RLPolicy):
                                "reqmore",
                                'closingmsg']
         self.turns = 0
+        self.unlock_buffer = True
 
     def dialog_start(self, dialog_start=False):
         self.sys_state = {
@@ -46,15 +47,14 @@ class Buffer(Service, RLPolicy):
             'informedPrimKeyValsSinceNone': []}
         self.turns = 0
 
-
-    @PublishSubscribe(sub_topics=["beliefstate", "sys_act"])#, 'next_id'])
+    @PublishSubscribe(sub_topics=["beliefstate", "sys_act"])
     def store(self, beliefstate, sys_act):#, next_id):
         self.turns += 1
         """the store functionality of the experience buffer held out here"""
         if sys_act == self.hello_action(): # or sys_act == self.bye_action():
-            return
+            return self.do_sample()
         if self.turns > self.max_turns:
-            return
+            return self.do_sample()
         try:
             action_id = self.make_action_id_from_action(sys_act)
         except ValueError:
@@ -62,19 +62,30 @@ class Buffer(Service, RLPolicy):
 
         state_vector = self.beliefstate_dict_to_vector(beliefstate)
         self.turn_end(beliefstate, state_vector, action_id)
+        return self.do_sample()
 
-    @PublishSubscribe(pub_topics=["training_batch"])
+    #@PublishSubscribe(pub_topics=["training_batch"])
     def dialog_end(self):
         self.end_dialog(self.sim_goal)
         self.total_train_dialogs += 1
         if self.writer is not None:
             self.writer.add_scalar('buffer/items', len(self.buffer),
                             self.total_train_dialogs)
+
+    @PublishSubscribe(pub_topics=["training_batch"])
+    def do_sample(self):
         if len(self.buffer) >= self.batch_size * 10 and \
                 self.total_train_dialogs % self.training_frequency == 0:
-            print('publishing ')
-            return {'training_batch': self.buffer.sample()}
-
+            if self.unlock_buffer:
+                batch = self.buffer.sample()
+                self.unlock_buffer = False
+                print(self.total_train_dialogs)
+                return {'training_batch': batch}
+            else:
+                return {'training_batch': None}
+        else:
+            self.unlock_buffer = True
+            return {'training_batch': None}
 
     @PublishSubscribe(sub_topics=["sim_goal"])
     def end(self, sim_goal):

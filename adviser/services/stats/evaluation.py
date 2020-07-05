@@ -175,6 +175,10 @@ class PolicyEvaluator(Service):
         """
         self.is_training = False
 
+    # @PublishSubscribe(sub_topics=["ongoing_training"])
+    # def ongoing(self, ongoing_training):
+    #     return ongoing_training
+
     @PublishSubscribe(sub_topics=["sim_goal"], pub_topics=["dialog_end"])
     def end_dialog(self, sim_goal: Goal):
         """

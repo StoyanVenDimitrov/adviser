@@ -75,7 +75,7 @@ def train(domain_name: str, log_to_file: bool, seed: int, train_epochs: int, tra
     buffer = Buffer(domain=domain, buffer_classname=buffer_cls)
     bst = HandcraftedBST(domain=domain, logger=logger)
     user = HandcraftedUserSimulator(domain, logger=logger)
-    scheduler = Scheduler(domain, 100)
+    scheduler = Scheduler(domain,10)
     # noise = SimpleNoise(domain=domain, train_error_rate=train_error_rate,
     #                     test_error_rate=test_error_rate, logger=logger)
     policy = DQNPolicy(domain=domain, lr=lr, eps_start=eps_start,
@@ -100,7 +100,7 @@ def train(domain_name: str, log_to_file: bool, seed: int, train_epochs: int, tra
         policy.train()
         evaluator.start_epoch()
         for episode in range(train_dialogs):
-            if episode % 100 == 0:
+            if episode % 5 == 0:
                 print("DIALOG", episode)
             logger.dialog_turn("\n\n!!!!!!!!!!!!!!!! NEW DIALOG !!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n")
             ds.run_dialog(start_signals={f'user_acts/{domain.get_domain_name()}': []})
