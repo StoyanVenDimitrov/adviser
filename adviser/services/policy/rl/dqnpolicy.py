@@ -37,6 +37,7 @@ from utils.domain.jsonlookupdomain import JSONLookupDomain
 from utils.logger import DiasysLogger
 from utils.sysact import SysAct, SysActionType
 from utils.useract import UserActionType
+import config
 
 
 class DQNPolicy(RLPolicy, Service):
@@ -52,7 +53,7 @@ class DQNPolicy(RLPolicy, Service):
                  buffer_cls: Type[Buffer] = NaivePrioritizedBuffer,
                  eps_start: float = 0.3, eps_end: float = 0.0,
                  l2_regularisation: float = 0.0, gradient_clipping: float = 5.0,
-                 p_dropout: float = 0.0, training_frequency: int = 2, train_dialogs: int = 1000,
+                 p_dropout: float = 0.0, training_frequency: int = 200, train_dialogs: int = 1000,
                  include_confreq: bool = False, logger: DiasysLogger = DiasysLogger(),
                  max_turns: int = 25,
                  summary_writer: SummaryWriter = None, device=torch.device('cpu')):
@@ -317,8 +318,7 @@ class DQNPolicy(RLPolicy, Service):
     def train_batch(self, training_batch):
         """ Train on a minibatch drawn from the experience buffer. """
         if not self.is_training or training_batch is None:
-            return # {"batch_train_end": True}
-        print('>>>', training_batch[1].size())
+            return
         self.train_call_count += 1
         s_batch = training_batch[0]
         a_batch = training_batch[1]
@@ -359,6 +359,7 @@ class DQNPolicy(RLPolicy, Service):
         if self.writer is not None:
             # plot loss
             self.writer.add_scalar('train/loss', current_loss, self.train_call_count)
+            config.average(current_loss, self.train_call_count)
             # plot min/max gradients
             max_grad_norm = -1.0
             min_grad_norm = 1000000.0
@@ -370,8 +371,8 @@ class DQNPolicy(RLPolicy, Service):
                         max_grad_norm = current_grad_norm
                     if current_grad_norm < min_grad_norm:
                         min_grad_norm = current_grad_norm
-            self.writer.add_scalar('train/min_grad', min_grad_norm, self.train_call_count)
-            self.writer.add_scalar('train/max_grad', max_grad_norm, self.train_call_count)
+            #self.writer.add_scalar('train/min_grad', min_grad_norm, self.train_call_count)
+            #self.writer.add_scalar('train/max_grad', max_grad_norm, self.train_call_count)
 
         # update target net
         if self.target_model is not None and \
@@ -389,8 +390,8 @@ class DQNPolicy(RLPolicy, Service):
             self.epsilon = max(0,
                                self.epsilon_start - (self.epsilon_start - self.epsilon_end)
                                * float(self.num_dialogs) / float(self.train_dialogs))
-            if self.writer is not None:
-                self.writer.add_scalar('train/eps', self.epsilon, self.total_train_dialogs)
+            # if self.writer is not None:
+            #     self.writer.add_scalar('train/eps', self.epsilon, self.total_train_dialogs)
 
     def save(self, path: str = os.path.join('models', 'dqn'), version: str = "1.0"):
         """ Save model weights
@@ -438,3 +439,20 @@ class DQNPolicy(RLPolicy, Service):
         self.model.eval()
         if self.target_model is not None:
             self.target_model.eval()
+
+    # dqn policy uses buffer service and doesn't need to write to a buffer
+    def turn_end(self, beliefstate: BeliefState, state_vector: torch.FloatTensor,
+                 sys_act_idx: int):
+        """ Call this function after a turn is done by the system """
+
+        self.last_sys_act = self.expand_system_action(sys_act_idx, beliefstate)
+        if self.logger:
+            self.logger.dialog_turn("system action > " + str(self.last_sys_act))
+        self._update_system_belief(beliefstate, self.last_sys_act)
+
+    def end_dialog(self, sim_goal: Goal):
+        """ Call this function when a dialog ended """
+        if sim_goal is None:
+            # real user interaction, no simulator - don't have to evaluate
+            # anything, just reset counters
+            return

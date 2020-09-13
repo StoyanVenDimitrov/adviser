@@ -17,7 +17,7 @@
 #
 ###############################################################################
 
-
+import config
 from services.service import Service, PublishSubscribe
 from services.simulator.goal import Goal
 from utils.domain.domain import Domain
@@ -212,6 +212,7 @@ class PolicyEvaluator(Service):
             if self.writer is not None:
                 self.writer.add_scalar('train/episode_reward', self.dialog_reward,
                                        self.total_train_dialogs)
+            config.reward_average(self.dialog_reward, self.total_train_dialogs)
         else:
             self.eval_rewards.append(self.dialog_reward)
             self.eval_success.append(int(success))
@@ -219,6 +220,7 @@ class PolicyEvaluator(Service):
             if self.writer is not None:
                 self.writer.add_scalar('eval/episode_reward', self.dialog_reward,
                                        self.total_eval_dialogs)
+                config.average_val(self.dialog_reward, self.total_eval_dialogs-1)
 
         return {"dialog_end": True}
 

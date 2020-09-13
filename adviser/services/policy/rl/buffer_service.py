@@ -17,7 +17,7 @@ class Buffer(Service, RLPolicy):
             buffer_classname,
             batch_size=64,
             buffer_size=6000,
-            training_frequency=2,
+            training_frequency=20,
             logger: DiasysLogger = DiasysLogger(),
             device=torch.device('cpu')
     ):
@@ -79,7 +79,6 @@ class Buffer(Service, RLPolicy):
             if self.unlock_buffer:
                 batch = self.buffer.sample()
                 self.unlock_buffer = False
-                print(self.total_train_dialogs)
                 return {'training_batch': batch}
             else:
                 return {'training_batch': None}
@@ -94,7 +93,6 @@ class Buffer(Service, RLPolicy):
     @PublishSubscribe(sub_topics=["buffer_update"])
     def update(self, buffer_update):
         """Carries out a buffer update"""
-        print('updating')
         for elem in buffer_update:
             # self.buffer.update(elem(0), elem(1)) leads to python error,
             # but it wasn't reported, only the results were very bad

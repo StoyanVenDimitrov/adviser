@@ -48,13 +48,12 @@ from services.service import DialogSystem
 from tensorboardX import SummaryWriter
 
 from utils import common
-
-
+import config
 
 def train(domain_name: str, log_to_file: bool, seed: int, train_epochs: int, train_dialogs: int,
           eval_dialogs: int, max_turns: int, train_error_rate: float, test_error_rate: float,
           lr: float, eps_start: float, grad_clipping: float, buffer_classname: str,
-          buffer_size: int, use_tensorboard: bool):
+          buffer_size: int, use_tensorboard: bool, curr_iteration: int, switch_after: int, eps_if_random: float):
 
     """
         Training loop for the RL policy, for information on the parameters, look at the descriptions
@@ -64,18 +63,18 @@ def train(domain_name: str, log_to_file: bool, seed: int, train_epochs: int, tra
 
     file_log_lvl = LogLevel.DIALOGS if log_to_file else LogLevel.NONE
     logger = DiasysLogger(console_log_lvl=LogLevel.RESULTS, file_log_lvl=file_log_lvl)
-
-    summary_writer = SummaryWriter(log_dir='buffer_logs/run2') if use_tensorboard else None
+    log_dir = 'logs/'+str(eps_if_random)+'/'+ str(curr_iteration)
+    summary_writer = SummaryWriter(log_dir=log_dir) if use_tensorboard else None
     
     if buffer_classname == "prioritized":
         buffer_cls = NaivePrioritizedBuffer
     elif buffer_classname == "uniform":
         buffer_cls = UniformBuffer
     domain = JSONLookupDomain(name=domain_name)
-    buffer = Buffer(domain=domain, buffer_classname=buffer_cls)
+    buffer = Buffer(domain=domain, buffer_classname=buffer_cls, training_frequency=2)
     bst = HandcraftedBST(domain=domain, logger=logger)
     user = HandcraftedUserSimulator(domain, logger=logger)
-    scheduler = Scheduler(domain,10)
+    scheduler = Scheduler(domain, switch_after, eps_if_random)
     # noise = SimpleNoise(domain=domain, train_error_rate=train_error_rate,
     #                     test_error_rate=test_error_rate, logger=logger)
     policy = DQNPolicy(domain=domain, lr=lr, eps_start=eps_start,
@@ -88,7 +87,7 @@ def train(domain_name: str, log_to_file: bool, seed: int, train_epochs: int, tra
                                 experiment_name=domain_name, logger=logger,
                                 summary_writer=summary_writer)
     ds = DialogSystem(services=[user, bst, policy, evaluator, buffer, hc_policy, scheduler], protocol='tcp')
-    ds.draw_system_graph()
+    # ds.draw_system_graph()
 
     error_free = ds.is_error_free_messaging_pipeline()
     if not error_free:
@@ -100,7 +99,7 @@ def train(domain_name: str, log_to_file: bool, seed: int, train_epochs: int, tra
         policy.train()
         evaluator.start_epoch()
         for episode in range(train_dialogs):
-            if episode % 5 == 0:
+            if episode % 100 == 0:
                 print("DIALOG", episode)
             logger.dialog_turn("\n\n!!!!!!!!!!!!!!!! NEW DIALOG !!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n")
             ds.run_dialog(start_signals={f'user_acts/{domain.get_domain_name()}': []})
@@ -115,6 +114,13 @@ def train(domain_name: str, log_to_file: bool, seed: int, train_epochs: int, tra
             logger.dialog_turn("\n\n!!!!!!!!!!!!!!!! NEW DIALOG !!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n")
             ds.run_dialog(start_signals={f'user_acts/{domain.get_domain_name()}': []})
         evaluator.end_epoch()
+
+    if summary_writer:
+        config.write_summ_val(summary_writer=summary_writer, iterations=curr_iteration)
+
+        config.write_summ(summary_writer=summary_writer, iterations=curr_iteration)
+        config.write_summ_reward(summary_writer=summary_writer, iterations=curr_iteration)
+        config.shutdown_conf()
     ds.shutdown()
 
 
@@ -134,11 +140,11 @@ if __name__ == "__main__":
     parser.add_argument("-rs", "--randomseed", default=12345, type=int,
                         help="seed for random generator initialization")
 
-    parser.add_argument("-e", "--epochs", default=8, type=int,
+    parser.add_argument("-e", "--epochs", default=6, type=int,
                         help="number of training and evaluation epochs")
     parser.add_argument("-td", "--traindialogs", default=1000, type=int,
                         help="number of training dialogs per epoch")
-    parser.add_argument("-ed", "--evaldialogs", default=500, type=int,
+    parser.add_argument("-ed", "--evaldialogs", default=50, type=int,
                         help="number of evaluation dialogs per epoch")
     parser.add_argument("-mt", "--maxturns", default=25, type=int,
                         help="maximum turns per dialog (dialogs with more turns will be terminated and counting as failed")
@@ -159,6 +165,12 @@ if __name__ == "__main__":
                         help="experience replay buffer type", default='prioritized')
     parser.add_argument("-bs", "--buffersize", type=int, default=6000,
                         help="capacity of experience replay buffer")
+    parser.add_argument("-avr", "--averagingit", type=int, default=1,
+                        help="complete training runs to average")
+    parser.add_argument("-swa", "--switchafter", type=int, default=0,
+                        help="if >0, after how many dialogues to switch from HC to rl policy")
+    parser.add_argument("-epsr", "--epsifrandom", type=float, default=0.0,
+                        help="if >0, % of hc policy dialogues at random")
     args = parser.parse_args()
     assert 0 <= args.epsilon <= 1, "exploration rate has to be between 0 and 1"
 
@@ -167,10 +179,13 @@ if __name__ == "__main__":
     elif args.domain == 'lecturers':
         domain_name = 'ImsLecturers'
 
-    train(domain_name=domain_name, log_to_file=args.logtofile,
-          use_tensorboard=args.logtensorboard, seed=args.randomseed, train_epochs=args.epochs,
-          train_dialogs=args.traindialogs, eval_dialogs=args.evaldialogs, max_turns=args.maxturns,
-          train_error_rate=args.trainerror, test_error_rate=args.evalerror, lr=args.learningrate,
-          eps_start=args.epsilon, grad_clipping=args.clipgrad, buffer_classname=args.buffername,
-          buffer_size=args.buffersize
-          )
+    # do some runs and average:
+    for i in range(args.averagingit):
+        train(domain_name=domain_name, log_to_file=args.logtofile,
+              use_tensorboard=args.logtensorboard, seed=args.randomseed, train_epochs=args.epochs,
+              train_dialogs=args.traindialogs, eval_dialogs=args.evaldialogs, max_turns=args.maxturns,
+              train_error_rate=args.trainerror, test_error_rate=args.evalerror, lr=args.learningrate,
+              eps_start=args.epsilon, grad_clipping=args.clipgrad, buffer_classname=args.buffername,
+              buffer_size=args.buffersize, curr_iteration=i, switch_after=args.switchafter,
+              eps_if_random=args.epsifrandom
+              )
