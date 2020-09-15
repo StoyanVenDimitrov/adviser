@@ -63,7 +63,10 @@ def train(domain_name: str, log_to_file: bool, seed: int, train_epochs: int, tra
 
     file_log_lvl = LogLevel.DIALOGS if log_to_file else LogLevel.NONE
     logger = DiasysLogger(console_log_lvl=LogLevel.RESULTS, file_log_lvl=file_log_lvl)
-    log_dir = 'logs/'+str(eps_if_random)+'/'+ str(curr_iteration)
+    if eps_if_random >= 0.0:
+        log_dir = 'logs/'+str(eps_if_random)+'/' + str(curr_iteration)
+    if switch_after > 0:
+        log_dir = 'logs/' + str(switch_after) + '/' + str(curr_iteration)
     summary_writer = SummaryWriter(log_dir=log_dir) if use_tensorboard else None
     
     if buffer_classname == "prioritized":
@@ -126,7 +129,7 @@ def train(domain_name: str, log_to_file: bool, seed: int, train_epochs: int, tra
 
 if __name__ == "__main__":
     # possible test domains
-    domains = ['courses', 'lecturers']
+    domains = ['courses', 'lecturers', 'modules']
 
     # command line arguments
     parser = argparse.ArgumentParser()
@@ -144,7 +147,7 @@ if __name__ == "__main__":
                         help="number of training and evaluation epochs")
     parser.add_argument("-td", "--traindialogs", default=1000, type=int,
                         help="number of training dialogs per epoch")
-    parser.add_argument("-ed", "--evaldialogs", default=50, type=int,
+    parser.add_argument("-ed", "--evaldialogs", default=200, type=int,
                         help="number of evaluation dialogs per epoch")
     parser.add_argument("-mt", "--maxturns", default=25, type=int,
                         help="maximum turns per dialog (dialogs with more turns will be terminated and counting as failed")

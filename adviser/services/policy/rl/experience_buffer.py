@@ -285,7 +285,6 @@ class NaivePrioritizedBuffer(Buffer):
         for i in range(batch_write_pos, self.batch_size):
             data_indices[i] = int(indices[i])
             probabilities[i] = self.probs[data_indices[i]]
-
         # assemble batch from data indices
         s_batch = self.mem_state.index_select(0, data_indices)
         a_batch = self.mem_action.index_select(0, data_indices)

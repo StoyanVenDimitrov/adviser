@@ -15,6 +15,8 @@ class Scheduler(Service):
         self.switch_after = switch_policies
         self.num_of_dialogs = 0
         self.epsilon_rand = epsilon
+        self.rand = random.uniform(0,1)
+        self.prev_num_of_dialogs = 0
 
     def dialog_start(self):
         self.num_of_dialogs += 1
@@ -27,8 +29,11 @@ class Scheduler(Service):
             if self.num_of_dialogs > self.switch_after:
                 return {"beliefstate_rl": beliefstate}
         else:
-            rand = random.uniform(0,1)
-            if rand <= self.epsilon_rand:
+            # when one dialog ended, make a new random choice:
+            if self.num_of_dialogs > self.prev_num_of_dialogs:
+                self.prev_num_of_dialogs += 1
+                self.rand = random.uniform(0,1)
+            if self.rand <= self.epsilon_rand:
                 return {"beliefstate_hcp": beliefstate}
-            if rand > self.epsilon_rand:
+            if self.rand > self.epsilon_rand:
                 return {"beliefstate_rl": beliefstate}
